@@ -1,0 +1,13 @@
+service: webAuth-serverless
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: us-west-2
+  stage: dev
+
+  functions:
+  signup:
+    handler: handler.signup
+    events:
+      - http: POST

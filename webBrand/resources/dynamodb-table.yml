@@ -1,0 +1,17 @@
+Resources:
+  NotesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.tableName}
+      AttributeDefinitions:
+        - AttributeName: brandId
+          AttributeType: S
+        - AttributeName: tenantId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: brandId
+          KeyType: HASH
+        - AttributeName: tenantId
+          KeyType: RANGE
+      # Set the capacity to auto-scale
+      BillingMode: PAY_PER_REQUEST
