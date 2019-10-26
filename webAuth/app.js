@@ -1,4 +1,3 @@
-// Require AWS, Express
 const AWS = require("aws-sdk");
 const express = require("express");
 const serverless = require("serverless-http");
@@ -7,9 +6,11 @@ const bodyParser = require("body-parser");
 // AWS Services
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const S3 = new AWS.S3(require("./s3config.js")());
+
 // configure express
 const app = express();
 app.use(bodyParser.json({ strict: false }));
+
 
 module.exports = async () => {
     app.get("/brands/health", function(req, res) {});

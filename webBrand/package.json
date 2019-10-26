@@ -2,9 +2,9 @@
   "name": "webbrand",
   "version": "1.0.0",
   "description": "backend api for brands",
-  "main": "app.js",
+  "main": "appgh.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "serverless-bundle test"
   },
   "author": "Paul Ikhane",
   "license": "ISC",
@@ -17,6 +17,9 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "serverless-domain-manager": "^3.3.0"
+    "serverless-bundle": "^1.2.5",
+    "serverless-domain-manager": "^3.3.0",
+    "serverless-dotenv-plugin": "^2.1.1",
+    "serverless-offline": "^5.12.0"
   }
 }

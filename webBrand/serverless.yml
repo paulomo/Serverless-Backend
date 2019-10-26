@@ -1,13 +1,14 @@
-service: webBrand-service
+service: web-brand-api
 
 # Create an optimized package for our functions
 package:
   individually: true
 
 plugins:
-  # - serverless-bundle # Package our functions with Webpack
+  - serverless-bundle # Package our functions with Webpack
   - serverless-domain-manager
   - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
 
 custom:
   # Our stage is based on what is passed in when running serverless
