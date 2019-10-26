@@ -1,27 +1,58 @@
-service: webCompany-serverless
+service: web-setting-api
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-domain-manager
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
 
 custom:
   # Our stage is based on what is passed in when running serverless
   # commands. Or fallsback to what we have set in the provider section.
   stage: ${opt:stage, self:provider.stage}
   # Set the table name here so we can use it while testing locally
-  tableName: ${self:custom.stage}-company
+  tableName: ${self:custom.stage}-brand
+  # Set the region here so we can use it in code
+  region: ${self:provider.region}
+  # Set the domain for the api service this will be (api.getclothme.com/user)
+  domains:
+    prod: api.getclothme.com
+    dev: dev-api.getclothme.com
+    test: test-api.getclothme.com
+
+  customDomain:
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    basePath: "brands"
+    stage: ${self:custom.stage}
+    createRoute53Record: true
+
+  # Load our secret environment variables based on the current stage.
+  # Fallback to default if it is not in prod.
+  # stripeKey: ${file(env.yml):${self:custom.stage}, file(env.yml):default}
 
 provider:
   name: aws
-  runtime: nodejs10.x
-  region: us-east-1
+  runtime: nodejs8.10
   stage: dev
+  region: us-east-1
 
   # These environment variables are made available to our functions
   # under process.env.
   environment:
-    tableName: ${self:custom.tableName}
+    BRAND_TABLE: ${self:custom.tableName}
+    APP_ENV: ${self:custom.stage}
+    AWS_REGION: ${self:custom.region}
+    SERVICE_NAME: ${self:service}
+    SERVICE_URL: ${self.custom.customDomain.domainName}
+    # STRIPE_SECRET_KEY: ${self:custom.stripeKey.stripeSecretKey}
 
-  # permissions for all of your functions can be set here
   iamRoleStatements:
     - Effect: Allow
-      Action: # Gives permission to DynamoDB tables in a specific region
+      Action:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
@@ -29,43 +60,23 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
+      # Restrict our IAM role permissions to
+      # the specific table for the stage
       Resource:
-        - "Fn::GetAtt": [CompanyTable, Arn]
+        - "Fn::GetAtt": [SettingTable, Arn]
 
-  functions:
-    app:
-      handler: company.handler
-      events:
-        - http: ANY /
-        - http: "ANY {proxy+}"
-    createCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company
-            method: POST
-            cors: true
-    getCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: GET
-            cors: true
-    putCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: PUT
-            cors: true
-    deleteCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: DELETE
-            cors: true
+functions:
+  # Defines an HTTP API endpoint that calls the main function in create.js
+  # - path: url path is /notes
+  # - method: POST request
+  # - cors: enabled CORS (Cross-Origin Resource Sharing) for browser cross
+  #     domain api call
+  # - authorizer: authenticate using the AWS IAM role
+  brand:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: "ANY {proxy+}"
 
 # Create our resources with separate CloudFormation templates
 resources:
