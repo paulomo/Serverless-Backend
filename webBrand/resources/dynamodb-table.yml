@@ -11,6 +11,8 @@ resources:
             AttributeType: S
           - AttributeName: brandId
             AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
         KeySchema:
           - AttributeName: tenantId
             KeyType: HASH
@@ -26,10 +28,21 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
+          - IndexName: userIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
           - IndexName: locationIndex
             KeySchema:
               - AttributeName: locationId
                 KeyType: HASH
+              - AttributeName: userId
+                KeyType: RANGE
             Projection:
               ProjectionType: ALL
             ProvisionedThroughput:
@@ -39,6 +52,8 @@ resources:
             KeySchema:
               - AttributeName: tenantId
                 KeyType: HASH
+              - AttributeName: locationId
+                keyType: RANGE
             Projection:
               ProjectionType: ALL
             ProvisionedThroughput:
