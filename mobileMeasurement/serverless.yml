@@ -1,11 +1,38 @@
-service: webCompany-serverless
+service: mobile-measurement-serverless
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-domain-manager
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
 
 custom:
   # Our stage is based on what is passed in when running serverless
   # commands. Or fallsback to what we have set in the provider section.
   stage: ${opt:stage, self:provider.stage}
   # Set the table name here so we can use it while testing locally
-  tableName: ${self:custom.stage}-company
+  tableName: ${self:custom.stage}
+  # Set the region here so we can use it in code
+  region: ${self:provider.region}
+  # Set the domain for the api service this will be (api.getclothme.com/user)
+  domains:
+    prod: api.getclothme.com
+    dev: dev-api.getclothme.com
+    test: test-api.getclothme.com
+
+  customDomain:
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    basePath: "brands"
+    stage: ${self:custom.stage}
+    createRoute53Record: true
+
+  # Load our secret environment variables based on the current stage.
+  # Fallback to default if it is not in prod.
+  # stripeKey: ${file(env.yml):${self:custom.stage}, file(env.yml):default}
 
 provider:
   name: aws
@@ -30,42 +57,21 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource:
-        - "Fn::GetAtt": [CompanyTable, Arn]
+        - "Fn::GetAtt": [MobileMeasurementTable, Arn]
 
   functions:
-    app:
-      handler: company.handler
+  # Defines an HTTP API endpoint that calls the main function in create.js
+  # - path: url path is /notes
+  # - method: POST request
+  # - cors: enabled CORS (Cross-Origin Resource Sharing) for browser cross
+  #     domain api call
+  # - authorizer: authenticate using the AWS IAM role
+    brand:
+      handler: index.handler
       events:
         - http: ANY /
         - http: "ANY {proxy+}"
-    createCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company
-            method: POST
-            cors: true
-    getCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: GET
-            cors: true
-    putCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: PUT
-            cors: true
-    deleteCompany:
-      handler: company.handler
-      events:
-        - http:
-            path: /company/{proxy+}
-            method: DELETE
-            cors: true
+ 
 
 # Create our resources with separate CloudFormation templates
 resources:
