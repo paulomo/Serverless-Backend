@@ -1,17 +1,52 @@
-Resources:
-  NotesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: ${self:custom.tableName}
-      AttributeDefinitions:
-        - AttributeName: userId
-          AttributeType: S
-        - AttributeName: tenantId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: userId
-          KeyType: HASH
-        - AttributeName: tenantId
-          KeyType: RANGE
-      # Set the capacity to auto-scale
-      BillingMode: PAY_PER_REQUEST
+resources:
+  Resources:
+    FitTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: tenantId
+            AttributeType: S
+          - AttributeName: locationId
+            AttributeType: S
+          - AttributeName: fitId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenantId
+            KeyType: HASH
+          - AttributeName: locationId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: fitIndex
+            KeySchema:
+              - AttributeName: fitId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: locationIndex
+            KeySchema:
+              - AttributeName: locationId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: tenantIndex
+            KeySchema:
+              - AttributeName: tenantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+        # Set the capacity to auto-scale
+        BillingMode: PAY_PER_REQUEST
+

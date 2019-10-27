@@ -28,6 +28,17 @@ function getTenantId(req) {
   return tenantId;
 }
 
+function getLocationId(req) {
+  var tenantId = "";
+  var bearerToken = req.get("Authorization");
+  if (bearerToken) {
+    bearerToken = bearerToken.substring(bearerToken.indexOf(" ") + 1);
+    var decodedIdToken = jwtDecode(bearerToken);
+    if (decodedIdToken) tenantId = decodedIdToken["custom:location_id"];
+  }
+  return tenantId;
+}
+
 /**
  * Extract non PII info from Token
  * @param req A request
@@ -99,7 +110,7 @@ function getRequestAuthToken(req) {
 
 // ******************************* DYNAMODB *********************************
 
-async function addItem(params) {
+async function addItem(data, credentials) {
   try {
     const response = await docClient.put(params);
     return JSON.stringify(response, null, 2);
