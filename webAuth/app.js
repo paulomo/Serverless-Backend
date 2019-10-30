@@ -96,3 +96,60 @@ module.exports = async () => {
       
 
 };
+
+AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoint
+
+var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
+    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
+};
+var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+
+var attributeList = [];
+
+var dataEmail = {
+    Name : 'email',
+    Value : 'email@mydomain.com'
+};
+var dataPhoneNumber = {
+    Name : 'phone_number',
+    Value : '+15555555555'
+};
+var attributeEmail = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataEmail);
+var attributePhoneNumber = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataPhoneNumber);
+
+attributeList.push(attributeEmail);
+attributeList.push(attributePhoneNumber);
+
+userPool.signUp('username', 'password', attributeList, null, function(err, result){
+    if (err) {
+        alert(err);
+        return;
+    }
+    cognitoUser = result.user;
+    console.log('user name is ' + cognitoUser.getUsername());
+});
+
+var authenticationData = {
+    Username : 'username',
+    Password : 'password'
+};
+var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
+var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
+    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
+};
+var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+var userData = {
+   Username : 'username',
+   Pool : userPool
+};
+var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
+   cognitoUser.authenticateUser(authenticationDetails, {
+      onSuccess: function (result) {
+         console.log('access token + ' + result.getAccessToken().getJwtToken());
+     /* Use the idToken for Logins Map when Federating User Pools with Cognito Identity or when passing through an Authorization Header to an API Gateway Authorizer */
+    console.log('idToken + ' + result.idToken.jwtToken);
+   },
+   onFailure: function(err) {
+      alert(err);
+   },
+});

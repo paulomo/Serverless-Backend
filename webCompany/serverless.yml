@@ -73,7 +73,7 @@ functions:
   #     domain api call
   # - authorizer: authenticate using the AWS IAM role
   brand:
-    handler: index.handler
+    handler: app.handler
     events:
       - http: ANY /
       - http: "ANY {proxy+}"

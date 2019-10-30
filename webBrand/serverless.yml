@@ -49,6 +49,7 @@ provider:
     SERVICE_NAME: ${self:service}
     SERVICE_URL: ${self.custom.customDomain.domainName}
     # STRIPE_SECRET_KEY: ${self:custom.stripeKey.stripeSecretKey}
+    NODE_PATH: "./:/opt/node_modules"
 
   iamRoleStatements:
     - Effect: Allow
@@ -65,6 +66,11 @@ provider:
       Resource:
         - "Fn::GetAtt": [BrandTable, Arn]
 
+layers:
+  dynamodb:
+    path: lib
+    description: "additional node_module"
+
 functions:
   # Defines an HTTP API endpoint that calls the main function in create.js
   # - path: url path is /notes
@@ -73,10 +79,25 @@ functions:
   #     domain api call
   # - authorizer: authenticate using the AWS IAM role
   brand:
-    handler: index.handler
+    handler: app.handler
     events:
-      - http: ANY /
-      - http: "ANY {proxy+}"
+      - http: 
+          path: /
+          method: ANY
+          cors: true
+      - http: 
+          path: /{proxy+}
+          method: ANY
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: 
+              Ref: ApiGatewayAuthorizer
+          authorizer:
+            name: name-of-authorizer 
+            arn: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    layers:
+      - {Ref: NodeModuleLayerLambdaLayer}
 
 # Create our resources with separate CloudFormation templates
 resources:
@@ -87,5 +108,7 @@ resources:
   # S3
   - ${file(resources/s3-bucket.yml)}
   # Cognito
+  - ${file(resources/cognito-authorizer.yml)}
   - ${file(resources/cognito-user-pool.yml)}
   - ${file(resources/cognito-identity-pool.yml)}
+

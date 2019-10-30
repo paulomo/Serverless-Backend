@@ -34,6 +34,7 @@ app.use(function(req, res, next) {
   bearerToken = req.get("Authorization");
   if (bearerToken) {
     tenantId = getTenantId(req);
+    locationId = getLocationId(req);
   }
   next();
 });
