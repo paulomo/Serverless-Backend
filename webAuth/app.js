@@ -176,7 +176,7 @@ module.exports = async () => {
   app.delete("/tenant/user/:userid", function(requset, response) {});
 
   /**
-   * Delete a user location
+   * Delete a location
    */
   app.delete("/tenant/location/:locationId", function(request, response) {});
 };
@@ -198,19 +198,19 @@ module.exports = async () => {
  * NOTE: In production, it is recommendended to have a backup of all Tables, and only manage these tables from corresponding micro-services.
  * Delete DynamoDB Tables required for the Infrastructure including the User, Tenant, Product, and Order Tables.
  */
-app.delete("/brands/tables", function(req, res) {});
+app.delete("/brands/tables", function(request, response) {});
 
 /**
  * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
  * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
  */
-app.delete("/brands/tenants/:tenantId", function(req, res) {});
+app.delete("/brands/tenants/:tenantId", function(request, response) {});
 
 /**
  * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
  * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
  */
 app.delete("/brands/tenants/:tenantId/location/:locationId", function(
-  req,
-  res
+  request,
+  response
 ) {});
