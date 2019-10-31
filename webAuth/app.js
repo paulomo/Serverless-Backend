@@ -3,153 +3,214 @@ const express = require("express");
 const serverless = require("serverless-http");
 const bodyParser = require("body-parser");
 
+const authHelper = require("../auth-helper");
+
+const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
+
 // AWS Services
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
-const S3 = new AWS.S3(require("./s3config.js")());
+// const S3 = new AWS.S3(require("./s3config.js")());
 
 // configure express
 const app = express();
 app.use(bodyParser.json({ strict: false }));
 
-
+// Funtions
 module.exports = async () => {
-    app.get("/brands/health", function(req, res) {});
-      
-    /**
-     * WARNING: THIS WILL REMOVE THE DYNAMODB TABLES FOR THIS QUICKSTART.
-     * NOTE: In production, it is recommendended to have a backup of all Tables, and only manage these tables from corresponding micro-services.
-     * Delete DynamoDB Tables required for the Infrastructure including the User, Tenant, Product, and Order Tables.
-     */
-    app.delete("/brands/tables", function(req, res) {});
-    
-    /**
-     * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
-     * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
-     */
-    app.delete("/brands/tenants/:tenantId", function(req, res) {});
+  /**
+   * Register a new tenant
+   */
+  app.post("/tenant/reg", async function(request, response) {
+    var tenant = request.body;
 
-    /**
-     * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
-     * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
-     */
-    app.delete("/brands/tenants/:tenantId/location/:locationId", function(req, res) {});
-    
-    /**
-     * Lookup user pool for any user
-     */
-    app.get("/brands/pool/:id", function(req, res) {});
-    
-    /**
-     * Get user attributes from a tenant
-     */
-    app.get("/brands/tenant/:tenantId:/user/:userId", function(req, res) {});
-    
-    /**
-     * Get a list of users from a tenant
-     */
-    app.get("/brands/tenant/:tenantId/users", function(req, res) {});
-    
-    /**
-     * Get list of locations using a tenantId and locationId
-     */
-    app.get("/brands/tenant/:tenantId/location/:locationId", function(req, res) {});
-    
-    /**
-     * Create a new location
-     */
-    app.post("/brands/tenant/:tenantId/location", function(req, res) {});
-    
-    /**
-     * Enable a tenant user that is currently disabled 
-     */
-    app.put("/brands/tenant/:tenantId/user/:userid", function(req, res) {});
-    
-    /**
-     * Disable a tenant user that is currently enabled
-     */
-    app.put("/brands/tenant/:tenantId/user/:userid", function(req, res) {});
+    // Generate the tenant and location id
+    tenant.id = tenant.companyName.toUpperCase() + uuidV4();
+    location.id = tenant.companyName.toUpperCase() + "-headOffice" + uuidV4();
+    winston.debug("Creating Tenant ID: " + tenant.id);
+    winston.debug("Creating Location ID: " + location.id);
+    tenant.id = tenant.id.split("-").join("");
 
-    /**
-     * Enable a location user that is currently disabled
-     */
-    app.put("/brands/tenant/:tenantId/location/:locationId/user/:userid", function(req, res) {});
-    
-    /**
-     * Disable a location user that is currently enabled
-     */
-    app.put("/brands/tenant/:tenantId/location/:locationId/user/:userid", function(req, res) {});
-    
-    /**
-     * Update a user's attributes
-     */
-    app.put("/brands/tenant/:tenantId/user/:userid", function(req, res) {});
-    
-    /**
-     * Delete a user tenant
-     */
-    app.delete("/brands/tenant/:tenantId/user/:userid", function(req, res) {});
+    // search params
+    var params = {
+      AttributesToGet: ["email", "company_name"],
+      Filter: "email",
+      // Limit: "NUMBER_VALUE",
+      // PaginationToken: "STRING_VALUE"
+      UserPoolId: cognitoUserPoolID /* required */
+    };
 
-    /**
-     * Delete a user location
-     */
-    app.delete("/brands/tenant/:tenantId/location/:locationId/user/:userid", function(req, res) {});
-      
-
-};
-
-AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoint
-
-var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
-    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
-};
-var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
-
-var attributeList = [];
-
-var dataEmail = {
-    Name : 'email',
-    Value : 'email@mydomain.com'
-};
-var dataPhoneNumber = {
-    Name : 'phone_number',
-    Value : '+15555555555'
-};
-var attributeEmail = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataEmail);
-var attributePhoneNumber = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataPhoneNumber);
-
-attributeList.push(attributeEmail);
-attributeList.push(attributePhoneNumber);
-
-userPool.signUp('username', 'password', attributeList, null, function(err, result){
-    if (err) {
-        alert(err);
-        return;
+    // search for tenat/user
+    const user = await authHelper.userExist(params);
+    if (user.data !== null) {
+      winston.error("User already exist");
+      response.status(400).send("User Already Exist");
+    } else {
+      // Define User Attributes
+      try {
+        const result = await authHelper.registerTenantAdmin(tenant);
+        response.status(200).send(result);
+      } catch (error) {
+        response.status(400).send(error);
+      }
     }
-    cognitoUser = result.user;
-    console.log('user name is ' + cognitoUser.getUsername());
-});
+  });
 
-var authenticationData = {
-    Username : 'username',
-    Password : 'password'
+  /**
+   * Lookup user pool for any user
+   */
+  app.get("/tenat/user-lookup/:userId", async function(request, response) {
+    const userId = request.params.userId;
+
+    // search params
+    var searchParams = {
+      AttributesToGet: ["email", "company_name", , "tenant_id", "location_id"],
+      Filter: "email = `${userId}`",
+      UserPoolId: cognitoUserPoolID /* required */
+    };
+
+    // search for user
+    try {
+      const result = await authHelper.userExist(searchParams);
+      response.status(200).send(result);
+    } catch (error) {
+      response.status(400).send(error);
+    }
+  });
+
+  /**
+   * Get user attributes from a tenant
+   */
+  app.get("/tenant/user-attribute/:userId", function(request, response) {
+    const userId = request.params.userId;
+
+    // search params
+    var searchParams = {
+      AttributesToGet: ["email", "company_name", , "tenant_id", "location_id"],
+      Filter: "email = `${userId}`",
+      UserPoolId: cognitoUserPoolID /* required */
+    };
+
+    // search for user
+    try {
+      const result = await authHelper.userExist(searchParams);
+      response.status(200).send(result);
+    } catch (error) {
+      response.status(400).send(error);
+    }
+  });
+
+  /**
+   * Get a list of users from a tenant
+   */
+  app.get("/tenant/users", function(request, response) {
+    const { TenantID, CompanyName } = authHelper.extractTokenData(request);
+
+    // search params
+    var searchParams = {
+      AttributesToGet: ["company_name", "tenant_id"],
+      Filter: "",
+      UserPoolId: cognitoUserPoolID /* required */
+    };
+
+    // search for user
+    try {
+      const result = await authHelper.userExist(searchParams);
+      const data = authHelper.tenantUsers(result, TenantID, CompanyName);
+      response.status(200).send(data);
+    } catch (error) {
+      response.status(400).send(error);
+    }
+  });
+
+  /**
+   * Get a list of users from a location
+   */
+  app.get("/tenant/location/users", async function(request, response) {
+    const { TenantID, LocationId, CompanyName  } = authHelper.extractTokenData(request);
+
+    // search params
+    var searchParams = {
+      AttributesToGet: ["company_name", "tenant_id", "location_id"],
+      Filter: "",
+      UserPoolId: cognitoUserPoolID /* required */
+    };
+
+    // search for and return tenat users
+    try {
+      const result = await authHelper.userExist(searchParams);
+      const data = authHelper.tenantUsers(result, TenantID, LocationId, CompanyName);
+      response.status(200).send(data);
+    } catch (error) {
+      response.status(400).send(error);
+    }
+  });
+
+  /**
+   * Get list of locations using a tenantId and locationId
+   */
+  app.get("/tenant/locations", function(request, response) {});
+
+  /**
+   * Create a new location and locationAdmin
+   */
+  app.post("/tenant/location", function(request, response) {});
+
+  /**
+   * Enable a tenant user that is currently disabled
+   */
+  app.put("/tenant/user-enabled/:userid", function(request, response) {});
+
+  /**
+   * Disable a tenant user that is currently enabled
+   */
+  app.put("/tenant/user-disabled/:userid", function(request, response) {});
+
+  /**
+   * Update a user's attributes
+   */
+  app.put("/tenant/user-update/:userid", function(requset, response) {});
+
+  /**
+   * Delete a user tenant
+   */
+  app.delete("/tenant/user/:userid", function(requset, response) {});
+
+  /**
+   * Delete a user location
+   */
+  app.delete("/tenant/location/:locationId", function(request, response) {});
 };
-var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
-var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
-    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
-};
-var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
-var userData = {
-   Username : 'username',
-   Pool : userPool
-};
-var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
-   cognitoUser.authenticateUser(authenticationDetails, {
-      onSuccess: function (result) {
-         console.log('access token + ' + result.getAccessToken().getJwtToken());
-     /* Use the idToken for Logins Map when Federating User Pools with Cognito Identity or when passing through an Authorization Header to an API Gateway Authorizer */
-    console.log('idToken + ' + result.idToken.jwtToken);
-   },
-   onFailure: function(err) {
-      alert(err);
-   },
-});
+
+// const AmazonCognitoIdentity = require("amazon-cognito-identity-js");
+
+// Configure Cognito
+// const CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
+// const CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
+//
+// const poolData = {
+//   UserPoolId: process.env["COGNITO_USER_POOL_ID"],
+//   ClientId: process.env["COGNITO_APP_CLIENT_ID"]
+// };
+// var userPool = new CognitoUserPool(poolData);
+
+/**
+ * WARNING: THIS WILL REMOVE THE DYNAMODB TABLES FOR THIS QUICKSTART.
+ * NOTE: In production, it is recommendended to have a backup of all Tables, and only manage these tables from corresponding micro-services.
+ * Delete DynamoDB Tables required for the Infrastructure including the User, Tenant, Product, and Order Tables.
+ */
+app.delete("/brands/tables", function(req, res) {});
+
+/**
+ * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
+ * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
+ */
+app.delete("/brands/tenants/:tenantId", function(req, res) {});
+
+/**
+ * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
+ * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
+ */
+app.delete("/brands/tenants/:tenantId/location/:locationId", function(
+  req,
+  res
+) {});

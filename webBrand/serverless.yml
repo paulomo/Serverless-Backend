@@ -81,20 +81,20 @@ functions:
   brand:
     handler: app.handler
     events:
-      - http: 
+      - http:
           path: /
           method: ANY
           cors: true
-      - http: 
+      - http:
           path: /{proxy+}
           method: ANY
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: 
+            authorizerId:
               Ref: ApiGatewayAuthorizer
           authorizer:
-            name: name-of-authorizer 
+            name: name-of-authorizer
             arn: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
     layers:
       - {Ref: NodeModuleLayerLambdaLayer}
@@ -111,4 +111,3 @@ resources:
   - ${file(resources/cognito-authorizer.yml)}
   - ${file(resources/cognito-user-pool.yml)}
   - ${file(resources/cognito-identity-pool.yml)}
-

@@ -1,13 +1,113 @@
-service: webAuth-serverless
+service: web-auth-api
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-domain-manager
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
+
+custom:
+  # Our stage is based on what is passed in when running serverless
+  # commands. Or fallsback to what we have set in the provider section.
+  stage: ${opt:stage, self:provider.stage}
+  # Set the table name here so we can use it while testing locally
+  tableName: ${self:custom.stage}-brand
+  # Set the region here so we can use it in code
+  region: ${self:provider.region}
+  # Set the domain for the api service this will be (api.getclothme.com/user)
+  domains:
+    prod: api.getclothme.com
+    dev: dev-api.getclothme.com
+    test: test-api.getclothme.com
+
+  customDomain:
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    basePath: "brands"
+    stage: ${self:custom.stage}
+    createRoute53Record: true
+
+  # Load our secret environment variables based on the current stage.
+  # Fallback to default if it is not in prod.
+  # stripeKey: ${file(env.yml):${self:custom.stage}, file(env.yml):default}
 
 provider:
   name: aws
-  runtime: nodejs10.x
-  region: us-west-2
+  runtime: nodejs8.10
   stage: dev
+  region: us-east-1
 
-  functions:
-  signup:
-    handler: handler.signup
+  # These environment variables are made available to our functions
+  # under process.env.
+  environment:
+    BRAND_TABLE: ${self:custom.tableName}
+    APP_ENV: ${self:custom.stage}
+    AWS_REGION: ${self:custom.region}
+    SERVICE_NAME: ${self:service}
+    SERVICE_URL: ${self.custom.customDomain.domainName}
+    # STRIPE_SECRET_KEY: ${self:custom.stripeKey.stripeSecretKey}
+    NODE_PATH: "./:/opt/node_modules"
+    COGNITO_USER_POOL: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    IDENTITY_POOL_ID: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      # Restrict our IAM role permissions to
+      # the specific table for the stage
+      Resource:
+        - "Fn::GetAtt": [BrandTable, Arn]
+
+layers:
+  dynamodb:
+    path: lib
+    description: "additional node_module"
+
+functions:
+  # Defines an HTTP API endpoint that calls the main function in create.js
+  # - path: url path is /notes
+  # - method: POST request
+  # - cors: enabled CORS (Cross-Origin Resource Sharing) for browser cross
+  #     domain api call
+  # - authorizer: authenticate using the AWS IAM role
+  brand:
+    handler: app.handler
     events:
-      - http: POST
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+    layers:
+      - { Ref: NodeModuleLayerLambdaLayer }
+
+# Create our resources with separate CloudFormation templates
+resources:
+  # API Gateway Errors
+  - ${file(resources/api-gateway-errors.yml)}
+  # DynamoDB
+  - ${file(resources/dynamodb-table.yml)}
+  # S3
+  - ${file(resources/s3-bucket.yml)}
+  # Cognito
+  - ${file(resources/cognito-authorizer.yml)}
+  - ${file(resources/cognito-user-pool.yml)}
+  - ${file(resources/cognito-identity-pool.yml)}
