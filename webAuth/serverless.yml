@@ -20,26 +20,25 @@ custom:
   region: ${self:provider.region}
   # Set the domain for the api service this will be (api.getclothme.com/user)
   domains:
-    prod: pro-api.getclothme.com
-    dev: dev-api.getclothme.com
-    test: test-api.getclothme.com
+    prod: getclothme.com
+    dev: getclothme.com
+    test: getclothme.com
 
   customDomain:
-    domainName: ${self:custom.domains.${self:custom.stage}}
-    basePath: ""
+    domainName: ${self:custom.stage.${self:custom.domains}}
+    basePath: "auth"
     stage: ${self:custom.stage}
     createRoute53Record: true
 
 provider:
   name: aws
   runtime: nodejs8.10
-  stage: dev
+  stage: dev-api
   region: us-east-1
 
   # These environment variables are made available to our functions
   # under process.env.
   environment:
-    BRAND_TABLE: ${self:custom.tableName}
     APP_ENV: ${self:custom.stage}
     AWS_REGION: ${self:custom.region}
     SERVICE_NAME: ${self:service}
@@ -47,6 +46,7 @@ provider:
     NODE_PATH: "./:/opt/node_modules"
     COGNITO_USER_POOL: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
     IDENTITY_POOL_ID: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    FAUNADB_SECRET: "fnADcYjorfACFL8MTompEY5VnQzLatjtkD9lHYjS"
 
 layers:
   dynamodb:

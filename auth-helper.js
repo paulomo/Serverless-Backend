@@ -1,16 +1,18 @@
 const AWS = require("aws-sdk");
 const jwtDecode = require("jwt-decode");
 
-AWS.config.update({
-  region: "us-east-1"
-});
+// Setup FaunaDB
+var faunadb = require("faunadb"),
+  q = faunadb.query;
+const FAUNADB_SECRET = process.env.FAUNADB_SECRET;
+var client = new faunadb.Client({ secret: FAUNADB_SECRET });
+
+AWS.config.update({ region: "us-east-1" });
 
 const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
 var cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
   apiVersion: "2016-04-18"
 });
-
-const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
 
 // ******************************* TOKEN *********************************
 
@@ -143,19 +145,22 @@ module.exports.userExist = function(params) {
  */
 module.exports.registerTenantAdmin = function(tenant) {
   var params = {
-    UserPoolId: cognitoUserPoolID /* required */,
-    Username: tenant.username /* required */,
+    UserPoolId: cognitoUserPoolID,
+    Username: tenant.Username,
     DesiredDeliveryMediums: [
       "EMAIL"
       /* more items */
     ],
     ForceAliasCreation: true,
     MessageAction: "RESEND",
-    // TemporaryPassword: tempPassword,
     UserAttributes: [
       {
         Name: "email",
-        Value: tanant.email
+        Value: tanant.Username
+      },
+      {
+        Name: "prefferedName",
+        Value: tenant.CompanyName
       },
       {
         Name: "custom:tenant_id",
@@ -186,8 +191,16 @@ module.exports.registerTenantAdmin = function(tenant) {
         Value: tenant.companyName
       },
       {
+        Name: "custom:tenant_faunadb",
+        Value: ""
+      },
+      {
         Name: "custom:tier",
         Value: tenant.tier
+      },
+      {
+        Name: "custom:tenant_faunadb_hash",
+        Value: ""
       }
     ]
   };
@@ -201,48 +214,105 @@ module.exports.registerTenantAdmin = function(tenant) {
 };
 
 /**
- * Save the configration and status of the new tenant
+ * Authenticate a tenant user
+ * @param tenant The new tenant data
+ * @returns {Promise} Results of tenant provisioning
+ */
+module.exports.signInTenant = function(data) {
+  const authenticationData = {
+    Username: data.email,
+    Password: data.password
+  };
+  cognitoUser.authenticateUser(authenticationData, {
+    onSuccess: function (result) {
+        // User authentication was successful
+    },
+
+    onFailure: function(err) {
+        // User authentication was not successful
+    },
+
+    newPasswordRequired: function(userAttributes, requiredAttributes) {
+        // User was signed up by an admin and must provide new 
+        // password and required attributes, if any, to complete 
+        // authentication.
+
+        // userAttributes: object, which is the user's current profile. It will list all attributes that are associated with the user. 
+        // Required attributes according to schema, which don’t have any values yet, will have blank values.
+        // requiredAttributes: list of attributes that must be set by the user along with new password to complete the sign-in.
+
+        
+        // Get these details and call 
+        // newPassword: password that user has given
+        // attributesData: object with key as attribute name and value that the user has given.
+        cognitoUser.completeNewPasswordChallenge(newPassword, attributesData, this)
+    }
+});
+};
+
+/**
+ * Save the tenant data to FaunaDB
  * @param tenant Data for the tenant to be created
  * @returns {Promise} The created tenant
  */
-module.exports.saveTenantData = function(tenant) {
-  var promise = new Promise(function(resolve, reject) {
-    // init the tenant sace request
-    var tenantRequestData = {
-      id: tenant.id,
-      companyName: tenant.companyName,
-      accountName: tenant.accountName,
-      ownerName: tenant.ownerName,
-      tier: tenant.tier,
-      email: tenant.email,
-      status: "Active",
-      UserPoolId: tenant.UserPoolId,
-      IdentityPoolId: tenant.IdentityPoolId,
-      systemAdminRole: tenant.systemAdminRole,
-      systemSupportRole: tenant.systemSupportRole,
-      trustRole: tenant.trustRole,
-      systemAdminPolicy: tenant.systemAdminPolicy,
-      systemSupportPolicy: tenant.systemSupportPolicy,
-      userName: tenant.userName
-    };
+module.exports.saveTenantDataToFaunadb = async function(tenant) {
+  // get the tenant data
+  const { company_name } = tenant.User.Attributes;
+  // create the database
+  const dbName = await client.query(q.CreateDatabase({ name: company_name }));
+  const secretKey = await client.query(q.CreateKey({ database: q.Database(dbName.name), role: "admin" }));
+  const collection = await CreateCollection({ name: "tenant-user" });
+  const index = await client.query(
+    q.CreateIndex({
+      name: company_name + "TENANT",
+      source: q.Collection(collection)
+    })
+  );
+  const data = {
+    email: Attributes.email,
+    tenant_id: Attributes.tenant_id,
+    location_id: Attributes.location_id,
+    location: Attributes.location,
+    firstName: Attributes.firstName,
+    lastName: Attributes.lastName,
+    role: Attributes.role,
+    companyName: Attributes.companyName,
+    tenant_faunadb: secretKey.secret,
+    tenant_faunadb_hash: secretKey.hashed_secret,
+    tier: Attributes.tier
+  };
+  // save the data to the database
+  const savedData = await client.query(
+    q.Create(q.Collection(collection), { data })
+  );
+  // return secret key
+  return savedData;
+};
 
-    // fire request
-    request(
+// Get tenant_faunadb, tenant_faunadb_hash from FaunaDB User
+module.exports.updateTenantUserWithFaunaRecords = async function(tenant) {
+  // const tenantDbData = await client.query(q.Match(q.Index(company_name + "TENANT")));
+  const { email, tenant_faunadb, tenant_faunadb_hash } = tenant.data;
+  var params = {
+    UserAttributes: [
       {
-        url: tenantURL,
-        method: "POST",
-        json: true,
-        headers: { "content-type": "application/json" },
-        body: tenantRequestData
+        Name: `custom:${tenant_faunadb}`,
+        Value: tenant_faunadb
       },
-      function(error, response, body) {
-        if (error || response.statusCode != 200) reject(error);
-        else resolve(body);
-      }
-    );
-  });
-
-  return promise;
+      {
+        Name: `custom:${tenant_faunadb_hash}`,
+        Value: tenant_faunadb_hash
+      },
+    ],
+    UserPoolId: cognitoUserPoolID,
+    Username: email,
+  };
+  try {
+    const result = await cognitoidentityserviceprovider.adminUpdateUserAttributes(params);
+    return result;
+  }catch(error){
+    return error;
+  }
 };
 
 module.exports.tenantUsers = async function(data, tenantId, companyName) {

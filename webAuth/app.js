@@ -3,13 +3,14 @@ const express = require("express");
 const serverless = require("serverless-http");
 const bodyParser = require("body-parser");
 
+
+// Get authHelper 
 const authHelper = require("../auth-helper");
 
 const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
 
 // AWS Services
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
-// const S3 = new AWS.S3(require("./s3config.js")());
+const S3 = new AWS.S3(require("./s3config.js")());
 
 // configure express
 const app = express();
@@ -20,35 +21,35 @@ module.exports = async () => {
   /**
    * Register a new tenant
    */
-  app.post("/tenant/reg", async function(request, response) {
+  app.post("/tenant/signup", async function(request, response) {
     var tenant = request.body;
 
     // Generate the tenant and location id
-    tenant.id = tenant.companyName.toUpperCase() + uuidV4();
-    location.id = tenant.companyName.toUpperCase() + "-headOffice" + uuidV4();
+    tenant.id = tenant.companyName.toUpperCase() + "-" + uuidV4();
+    location.id = tenant.companyName.toUpperCase() + "-headOffice-" + uuidV4();
     winston.debug("Creating Tenant ID: " + tenant.id);
     winston.debug("Creating Location ID: " + location.id);
-    tenant.id = tenant.id.split("-").join("");
 
     // search params
-    var params = {
+    var searchParams = {
       AttributesToGet: ["email", "company_name"],
       Filter: "email",
-      // Limit: "NUMBER_VALUE",
-      // PaginationToken: "STRING_VALUE"
       UserPoolId: cognitoUserPoolID /* required */
     };
 
     // search for tenat/user
-    const user = await authHelper.userExist(params);
+    const user = await authHelper.userExist(searchParams);
+    // see if user already exist
     if (user.data !== null) {
       winston.error("User already exist");
       response.status(400).send("User Already Exist");
     } else {
-      // Define User Attributes
       try {
-        const result = await authHelper.registerTenantAdmin(tenant);
-        response.status(200).send(result);
+        const tenantResult = await authHelper.registerTenantAdmin(tenant);
+        // create database and store tenant data
+        const responseDB = await authHelper.saveTenantDataToFaunadb(tenantResult);
+        const userObject = await authHelper.updateTenantUserWithFaunaRecords(responseDB);
+        response.status(200).send(userObject);
       } catch (error) {
         response.status(400).send(error);
       }
@@ -86,7 +87,7 @@ module.exports = async () => {
     // search params
     var searchParams = {
       AttributesToGet: ["email", "company_name", , "tenant_id", "location_id"],
-      Filter: "email = `${userId}`",
+      Filter: `"email = ${userId}"`,
       UserPoolId: cognitoUserPoolID /* required */
     };
 

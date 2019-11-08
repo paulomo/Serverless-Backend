@@ -3,7 +3,7 @@ var docClient = new AWS.DynamoDB.DocumentClient();
 
 // ******************************* DYNAMODB *********************************
 
-module.exports.addItem = async function(data, credentials) {
+module.exports.addItem = async function(data) {
   try {
     const response = await docClient.put(params);
     return JSON.stringify(response, null, 2);
