@@ -20,84 +20,52 @@ app.use(bodyParser.json({ strict: false }));
 
 const USER_CIRCLE_TABLE = process.env.USER_CIRCLE_TABLE;
 
-// Get Brand endpoint
-app.get('/user-circles/health', function (req, res) {
+/**
+ * API HEALTH
+ */
+app.get('/mobile-circles/health', function (request, response) {
 	res.status(200).send({service: 'User Circle Manager', isAlive: true});
 });
 
-// Create REST entry points
-app.get('/user-circles/:userCircleId', function (req, res) {
+/**
+ * READ ONE
+ */
+app.get('/mobile-circles/:id', function (request, response) {
 	winston.debug('Fetching user circle: ' + req.params.id);
 	// init params structure with request params
-	var params = {
-		userCircleId: req.params.id
-	};
+
 });
 
-app.get("/user-circles/:userCircleId", function(request, response) {
-  const params = {
-    TableName: USER_CIRCLE_TABLE,
-    Key: {
-      userCircleId: request.params.userCircleId
-    }
-  };
+/**
+ * READ ALL
+ */
+app.get("/mobile-circles", function(request, response) {
 
-  dynamoDb.get(params, (error, result) => {});
 });
 
-app.get('/user-circles', function (req, res) {
-	var searchParams = {
-		TableName: process.env.USER_CIRCLE_TABLE,
-		KeyConditionExpression: "userCircleId = :userCircleId",
-		ExpressionAttributeValues: {
-			":userCircleId": req.params.userCircleId
-		}
-	};
+/**
+ * CREATE
+ */
+app.get('/mobile-circles', function (request, response) {
+
 });
 
-app.put('/user-circles', function (req, res) {
-	winston.debug('Updating user circle: ' + req.body.userCircleId);
+/**
+ * UPDATE
+ */
+app.put('/mobile-circles/:id', function (request, response) {
+	winston.debug('Updating user circle: ' + request);
 	// init the params from the request data
-	var keyParams = {
-		userCircleId: req.body.userCircleId
-	};
-	winston.debug('Updating user circle: ' + req.body.userCircleId);
-	var saleUpdateParams = {
-		TableName: userBrandSchema.TableName,
-		Key: keyParams,
-		UpdateExpression: "set " +
-				"sku=:sku, " +
-				"title=:title, " +
-				"description=:description, " +
-				"#condition=:condition, " +
-				"conditionDescription=:conditionDescription, " +
-				"numberInStock=:numberInStock, " +
-				"unitCost=:unitCost",
-		ExpressionAttributeNames: {
-			'#condition': 'condition'
-		},
-		ExpressionAttributeValues: {
-			":sku": req.body.sku,
-			":title": req.body.title,
-			":description": req.body.description,
-			":condition": req.body.condition,
-			":conditionDescription": req.body.conditionDescription,
-			":numberInStock": req.body.numberInStock,
-			":unitCost": req.body.unitCost
-		},
-		ReturnValues: "UPDATED_NEW"
-	};
+
 });
 
-app.delete('/user-circles/:userCircleId', function (req, res) {
-	winston.debug('Deleting user circle: ' + req.params.id);
+/**
+ * DELETE
+ */
+app.delete('/mobile-circles/:id', function (request, response) {
+	winston.debug('Deleting user circle: ' + request);
 	// init parameter structure
-	var deleteUserCircleParams = {
-		TableName: process.env.USER_CIRCLE_TABLE,
-		Key: {
-			userCircleId: req.params.id
-		}
-	};
+
 });
 
 module.exports.handler = serverless(app);

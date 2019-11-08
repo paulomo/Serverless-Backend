@@ -10,7 +10,6 @@ const uuidV4 = require('uuid/v4').default;
 const winston = require('winston');
 
 // AWS Services
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const S3 = new AWS.S3(require("./s3config.js")());
 
 // Configure middleware
@@ -20,84 +19,52 @@ app.use(bodyParser.json({ strict: false }));
 
 const USER_CHAT_TABLE = process.env.USER_CHAT_TABLE;
 
-// Get Brand endpoint
-app.get('/user-chats/health', function (req, res) {
+/**
+ * API HEALTH
+ */
+app.get('/mobile-chats/health', function (request, response) {
 	res.status(200).send({service: 'User Chat Manager', isAlive: true});
 });
 
-// Create REST entry points
-app.get('/user-chats/:userChatId', function (req, res) {
-	winston.debug('Fetching user chat: ' + req.params.id);
+/**
+ * READ ONE
+ */
+app.get("/mobile-chats/:id", function(request, response) {
+  
+});
+
+/**
+ * READ
+ */
+app.get('/mobile-chats/:id', function (request, response) {
+	winston.debug('Fetching user chat: ' + request);
 	// init params structure with request params
-	var params = {
-		userChatId: req.params.id
-	};
+	
 });
 
-app.get("/user-chats/:userChatId", function(request, response) {
-  const params = {
-    TableName: USER_CHAT_TABLE,
-    Key: {
-      userChatId: request.params.userChatId
-    }
-  };
-
-  dynamoDb.get(params, (error, result) => {});
+/**
+ * CREATE
+ */
+app.post('/mobile-chats', function (request, response) {
+	
 });
 
-app.get('/user-chats', function (req, res) {
-	var searchParams = {
-		TableName: process.env.USER_CHAT_TABLE,
-		KeyConditionExpression: "userChatId = :userChatId",
-		ExpressionAttributeValues: {
-			":userChatId": req.params.userChatId
-		}
-	};
-});
-
-app.put('/user-chats', function (req, res) {
-	winston.debug('Updating user chat: ' + req.body.userChatId);
+/**
+ * UPDATE
+ */
+app.put('/mobile-chats/:id', function (request, response) {
+	winston.debug('Updating user chat: ' + request);
 	// init the params from the request data
-	var keyParams = {
-		userChatId: req.body.userChatId
-	};
-	winston.debug('Updating user brand: ' + req.body.userChatId);
-	var chatUpdateParams = {
-		TableName: userChatSchema.TableName,
-		Key: keyParams,
-		UpdateExpression: "set " +
-				"sku=:sku, " +
-				"title=:title, " +
-				"description=:description, " +
-				"#condition=:condition, " +
-				"conditionDescription=:conditionDescription, " +
-				"numberInStock=:numberInStock, " +
-				"unitCost=:unitCost",
-		ExpressionAttributeNames: {
-			'#condition': 'condition'
-		},
-		ExpressionAttributeValues: {
-			":sku": req.body.sku,
-			":title": req.body.title,
-			":description": req.body.description,
-			":condition": req.body.condition,
-			":conditionDescription": req.body.conditionDescription,
-			":numberInStock": req.body.numberInStock,
-			":unitCost": req.body.unitCost
-		},
-		ReturnValues: "UPDATED_NEW"
-	};
+
 });
 
-app.delete('/user-chats/:userChatId', function (req, res) {
-	winston.debug('Deleting user chat: ' + req.params.id);
+/**
+ * DELETE
+ */
+app.delete('/mobile-chats/:id', function (request, response) {
+	winston.debug('Deleting user chat: ' + request);
 	// init parameter structure
-	var deleteUserChatParams = {
-		TableName: process.env.USER_CHAT_TABLE,
-		Key: {
-			userChatId: req.params.id
-		}
-	};
+	
 });
 
 module.exports.handler = serverless(app);

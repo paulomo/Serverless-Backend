@@ -20,84 +20,52 @@ app.use(bodyParser.json({ strict: false }));
 
 const USER_DELIVERY_TABLE = process.env.USER_DELIVERY_TABLE;
 
-// Get Brand endpoint
-app.get('/user-deliveries/health', function (req, res) {
+/**
+ * API HEALTH
+ */
+app.get('/mobile-deliveries/health', function (request, response) {
 	res.status(200).send({service: 'User Delivery Manager', isAlive: true});
 });
 
-// Create REST entry points
-app.get('/user-deliveries/:userDeliveryId', function (req, res) {
-	winston.debug('Fetching user delivery: ' + req.params.id);
+/**
+ * READ ONE
+ */
+app.get('/mobile-deliveries/:id', function (request, response) {
+	winston.debug('Fetching user delivery: ' + request);
 	// init params structure with request params
-	var params = {
-		userDeliveryId: req.params.id
-	};
+
 });
 
-app.get("/user-deliveries/:userDeliveryId", function(request, response) {
-  const params = {
-    TableName: USER_DELIVERY_TABLE,
-    Key: {
-      userDeliveryId: request.params.userDeliveryId
-    }
-  };
+/**
+ * READ ALL
+ */
+app.get("/mobile-deliveries", function(request, response) {
 
-  dynamoDb.get(params, (error, result) => {});
 });
 
-app.get('/user-deliveries', function (req, res) {
-	var searchParams = {
-		TableName: process.env.USER_DELIVERY_TABLE,
-		KeyConditionExpression: "userDeliveryId = :userDeliveryId",
-		ExpressionAttributeValues: {
-			":userDeliveryId": req.params.userDeliveryId
-		}
-	};
+/**
+ * CREATE
+ */
+app.post('/mobile-deliveries', function (request, response) {
+
 });
 
-app.put('/user-deliveries', function (req, res) {
-	winston.debug('Updating user delivery: ' + req.body.userDeliveryId);
+/**
+ * UPDATE
+ */
+app.put('/mobile-deliveries/:id', function (request, response) {
+	winston.debug('Updating user delivery: ' + request);
 	// init the params from the request data
-	var keyParams = {
-		userDeliveryId: req.body.userDeliveryId
-	};
-	winston.debug('Updating user delivery: ' + req.body.userDeliveryId);
-	var deliveryUpdateParams = {
-		TableName: userBrandSchema.TableName,
-		Key: keyParams,
-		UpdateExpression: "set " +
-				"sku=:sku, " +
-				"title=:title, " +
-				"description=:description, " +
-				"#condition=:condition, " +
-				"conditionDescription=:conditionDescription, " +
-				"numberInStock=:numberInStock, " +
-				"unitCost=:unitCost",
-		ExpressionAttributeNames: {
-			'#condition': 'condition'
-		},
-		ExpressionAttributeValues: {
-			":sku": req.body.sku,
-			":title": req.body.title,
-			":description": req.body.description,
-			":condition": req.body.condition,
-			":conditionDescription": req.body.conditionDescription,
-			":numberInStock": req.body.numberInStock,
-			":unitCost": req.body.unitCost
-		},
-		ReturnValues: "UPDATED_NEW"
-	};
+
 });
 
-app.delete('/user-deliveries/:userDeliveryId', function (req, res) {
-	winston.debug('Deleting user delivery: ' + req.params.id);
+/**
+ * DELETE
+ */
+app.delete('/user-deliveries/:id', function (request, response) {
+	winston.debug('Deleting user delivery: ' + request);
 	// init parameter structure
-	var deleteUserDeliveryParams = {
-		TableName: process.env.USER_DELIVERY_TABLE,
-		Key: {
-			userDeliveryId: req.params.id
-		}
-	};
+
 });
 
 module.exports.handler = serverless(app);
