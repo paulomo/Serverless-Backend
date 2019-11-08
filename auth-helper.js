@@ -7,6 +7,8 @@ var faunadb = require("faunadb"),
 const FAUNADB_SECRET = process.env.FAUNADB_SECRET;
 var client = new faunadb.Client({ secret: FAUNADB_SECRET });
 
+// AWS Services
+const S3 = new AWS.S3(require("./s3config.js")());
 AWS.config.update({ region: "us-east-1" });
 
 const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
@@ -346,3 +348,10 @@ module.exports.locationUsers = async function(
     return locationUsers;
   }
 };
+
+module.exports.checkId = function(data) {
+  const { id } = data;
+  if (typeof id !== "string") {
+    return { message: '"Id" must be a string', code: 400 };
+  } 
+}

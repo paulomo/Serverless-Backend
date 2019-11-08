@@ -1,117 +1,160 @@
 // Require AWS, Express
 const AWS = require("aws-sdk");
+var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
 const express = require("express");
 const serverless = require("serverless-http");
 const bodyParser = require("body-parser");
 
-// AWS Services
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
-const S3 = new AWS.S3(require("./s3config.js")());
 
 // configure express
 const app = express();
 app.use(bodyParser.json({ strict: false }));
 
-
-module.exports = async () => {
-    app.get("/users/health", function(req, res) {});
-    
-    /**
-     * Get user attributes
-     */
-    app.get("/users/:userId", function(req, res) {});
-    
-    /**
-     * Get a list of users using a tenant id to scope the list
-     */
-    app.get("/users", function(req, res) {});
-    
-    /**
-     * Get a list of users using a tenantId and locationId to scope the list
-     */
-    app.get("/users", function(req, res) {});
-    
-    /**
-     * Create a new user
-     */
-    app.post("/users/create", function(req, res) {});
-    
-    /**
-     * Enable a user that is currently disabled
-     */
-    app.put("/users/enable", function(req, res) {});
-    
-    /**
-     * Disable a user that is currently enabled
-     */
-    app.put("/users/disable", function(req, res) {});
-    
-    /**
-     * Update a user's attributes
-     */
-    app.put("/users", function(req, res) {});
-    
-    /**
-     * Delete a user
-     */
-    app.delete("/users/:userId", function(req, res) {});
-      
-
-};
-
 AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoint
 
-var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
-    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
+// Configure UserPool
+const COGNITO_USER_POOL = process.env.COGNITO_USER_POOL;
+const CLIENT_APP_ID = process.env.CLIENT_APP_ID;
+
+const poolData = { 
+    UserPoolId : COGNITO_USER_POOL,
+    ClientId : CLIENT_APP_ID
 };
-var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
 
-var attributeList = [];
+/**
+ * API Health
+ */
+app.get("/mobile-auth/auth/health", function(request, response) {
+  response.status(200).send({ service: "Mobile Auth", isAlive: true });
+});
 
-var dataEmail = {
-    Name : 'email',
-    Value : 'email@mydomain.com'
-};
-var dataPhoneNumber = {
-    Name : 'phone_number',
-    Value : '+15555555555'
-};
-var attributeEmail = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataEmail);
-var attributePhoneNumber = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataPhoneNumber);
+/**
+ * SIGNUP
+ */
+app.post("/mobile-auth/signup", function(request, response) {
+    const { Username, password, firstName } = request.body;
+    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
-attributeList.push(attributeEmail);
-attributeList.push(attributePhoneNumber);
+    var attributeList = [];
 
-userPool.signUp('username', 'password', attributeList, null, function(err, result){
-    if (err) {
-        alert(err);
-        return;
+    const dataPhone = {
+        Name : 'phone_number',
+        Value : Username
+    };
+    const firstName = {
+        Name : 'given_name',
+        Value : firstName
+    };
+    const attributePhone = new AmazonCognitoIdentity.CognitoUserAttribute(dataPhone);
+    const attributefirstName = new AmazonCognitoIdentity.CognitoUserAttribute(firstName);
+
+    attributeList.push(attributePhone);
+    attributeList.push(attributefirstName);
+
+    try {
+        const result = await userPool.signUp(Username, password, attributeList, null);
+        response.status(200).send(result);
+    }catch(error){
+        response.status(400).send(error);
     }
-    cognitoUser = result.user;
-    console.log('user name is ' + cognitoUser.getUsername());
 });
 
-var authenticationData = {
-    Username : 'username',
-    Password : 'password'
-};
-var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
-var poolData = { UserPoolId : 'us-east-1_TcoKGbf7n',
-    ClientId : '4pe2usejqcdmhi0a25jp4b5sh3'
-};
-var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
-var userData = {
-   Username : 'username',
-   Pool : userPool
-};
-var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
-   cognitoUser.authenticateUser(authenticationDetails, {
-      onSuccess: function (result) {
-         console.log('access token + ' + result.getAccessToken().getJwtToken());
-     /* Use the idToken for Logins Map when Federating User Pools with Cognito Identity or when passing through an Authorization Header to an API Gateway Authorizer */
-    console.log('idToken + ' + result.idToken.jwtToken);
-   },
-   onFailure: function(err) {
-      alert(err);
-   },
+/**
+ * SIGNIN
+ */
+app.post("/mobileu-auth/signin", function(request, response) {
+    // Amazon Cognito creates a session which includes the id, 
+    // access, and refresh tokens of an authenticated user.
+    const { username, password } = request.body;
+
+    var authenticationData = {
+        Username : username,
+        Password : password,
+    };
+    var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+    
+    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+    var userData = {
+        Username : username,
+        Pool : userPool
+    };
+    var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+    cognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: function (result) {
+            const resultObjectt = {
+                accessToken: result.getAccessToken().getJwtToken(),
+                idToken: result.idToken.jwtToken
+            }
+            /* Use the idToken for Logins Map when Federating User Pools 
+            with identity pools or when passing through an Authorization Header 
+            to an API Gateway Authorizer 
+            */
+           response.status(200).send(resultObjectt);
+        },
+
+        onFailure: function(error) {
+            response.status(400).send(error);
+        },
+
+    });
 });
+
+/**
+ * Forgot Password
+ */
+app.put("/mobile-auth/forgotpassword", function(request, response) {});
+
+/**
+ * Reset Password
+ */
+app.put("/mobile-auth/resetpassword/:id", function(request, response) {});
+
+/**
+ * SMS CONFIRM USER
+ */
+app.put("/mobile-auth/confirmationcode/:id", function(request, response) {
+    const { username, confirmationCode } = request.body;
+    
+    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+    var userData = {
+        Username: username,
+        Pool: userPool,
+    };
+    
+    var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+    cognitoUser.confirmRegistration(confirmationCode, true, function(error, result) {
+        if (error) {
+            response.status(400).send(JSON.stringify(error))
+        }
+        response.status(200).send(result);
+    });
+});
+
+/**
+ * Resend SMS Confirmation Code
+ */
+app.post("/mobile-auth/resendconfirmationcode/:id", function(request, response) {
+    const { username } = request.body;
+
+    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+    var userData = {
+        Username: username,
+        Pool: userPool,
+    };
+    var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+    cognitoUser.resendConfirmationCode(function(error, result) {
+        if (error) {
+            response.status(400).send(JSON.stringify(error))
+        }
+        response.status(200).send(result);
+    });
+});
+
+/**
+ * DELETE USER
+ */
+app.delete("/mobile-auth/:id", function(request, response) {});
+      
+module.exports.handler = serverless(app);
+
