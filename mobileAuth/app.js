@@ -152,7 +152,18 @@ app.post("/mobile-auth/resendconfirmationcode/:id", function(request, response) 
 });
 
 /**
- * DELETE USER
+ * FACEBOOK
+ */
+app.delete("/mobile-auth/facebook:id", function(request, response) {});
+
+/**
+ * GOOGLE
+ */
+app.post("/mobile-auth/google:id", function(request, response) {});
+
+
+/**
+ * DELETE 
  */
 app.delete("/mobile-auth/:id", function(request, response) {});
       
