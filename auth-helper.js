@@ -21,23 +21,25 @@ var cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
 
 // ******************************* TOKEN *********************************
 
-// ID token contains the user fields defined in the Amazon Cognito user pool.
-// JWT tokens include three sections: a header, payload, and signature.
 
-module.exports = function(req, res, next) {
+/**
+ * ID token contains the user fields defined in the Amazon Cognito user pool.
+ * JWT tokens include three sections: a header, payload, and signature.
+ * Extract an id token from a request, decode it and extract the tenant
+ * id from the token.
+ * @param request A request
+ * @returns A token if valid or error message
+ */
+module.exports.getAuthToken = function(request) {
   //get the token from the header if present
-  const token = req.headers["x-access-token"] || req.headers["authorization"];
-  //if no token found, return response (without going to the next middelware)
-  if (!token) return res.status(401).send("Access denied. No token provided.");
-
+  const token = request.headers["x-access-token"] || request.headers["authorization"];
+  if (!token) return "Access denied. No token provided.";
   try {
-    //if can verify the token, set req.user and pass to next middleware
     const decoded = jwt.verify(token, config.get("myprivatekey"));
-    req.user = decoded;
-    next();
-  } catch (ex) {
+    return decoded;
+  } catch (error) {
     //if invalid token
-    res.status(400).send("Invalid token.");
+    return "Invalid token.";
   }
 };
 
@@ -47,9 +49,9 @@ module.exports = function(req, res, next) {
  * @param req A request
  * @returns A tenant Id
  */
-module.exports.getTenantId = function(req) {
+module.exports.getTenantId = function(request) {
   var tenantId = "";
-  var bearerToken = req.get("Authorization");
+  var bearerToken = request.get("Authorization");
   if (bearerToken !== null) {
     bearerToken = bearerToken.substring(bearerToken.indexOf(" ") + 1);
     var decodedIdToken = jwtDecode(bearerToken);
@@ -64,9 +66,9 @@ module.exports.getTenantId = function(req) {
  * @param req A request
  * @returns A tenant Id
  */
-module.exports.getLocationId = function(req) {
+module.exports.getLocationId = function(request) {
   var locationId = "";
-  var bearerToken = req.get("Authorization");
+  var bearerToken = request.get("Authorization");
   if (bearerToken) {
     bearerToken = bearerToken.substring(bearerToken.indexOf(" ") + 1);
     var decodedIdToken = jwtDecode(bearerToken);
@@ -80,9 +82,9 @@ module.exports.getLocationId = function(req) {
  * @param req A request
  * @returns JSON Object without PII
  */
-module.exports.extractTokenData = function(req) {
-  var tokenData;
-  var bearerToken = req.get("Authorization");
+module.exports.extractTokenData = function(request) {
+  var tokenData = {};
+  var bearerToken = request.get("Authorization");
   if (bearerToken) {
     bearerToken = bearerToken.substring(bearerToken.indexOf(" ") + 1);
     var decodedIdToken = jwtDecode(bearerToken);
@@ -91,6 +93,8 @@ module.exports.extractTokenData = function(req) {
       tokenData.LocationID = decodedIdToken["custom:location_id"];
       tokenData.Location = decodedIdToken["custom:location"];
       tokenData.CompanyName = decodedIdToken["custom:company_name"];
+      tokenData.Location = decodedIdToken["custom:tenant_faunadb"];
+      tokenData.CompanyName = decodedIdToken["custom:tenant_faunadb_hash"];
       //Add Other Mappings Below
       //others such as sub, and non pii information
     }
@@ -281,12 +285,15 @@ module.exports.signInTenant = function(data) {
  * @returns {Promise} The created tenant
  */
 module.exports.saveTenantDataToFaunadb = async function(tenant) {
-  // get the tenant data
+  // get the tenant company_name
   const { company_name } = tenant.User.Attributes;
-  // create the database
+  // create the database with the company_name
   const dbName = await client.query(q.CreateDatabase({ name: company_name }));
+  // create secret key to only access the collection
   const secretKey = await client.query(q.CreateKey({ database: q.Database(dbName.name), role: "admin" }));
+  // create collection
   const collection = await CreateCollection({ name: "tenant-user" });
+  // create index for the collection
   const index = await client.query(
     q.CreateIndex({
       name: company_name + "TENANT",
@@ -302,8 +309,8 @@ module.exports.saveTenantDataToFaunadb = async function(tenant) {
     lastName: Attributes.lastName,
     role: Attributes.role,
     companyName: Attributes.companyName,
-    tenant_faunadb: secretKey.secret,
-    tenant_faunadb_hash: secretKey.hashed_secret,
+    tenant_faunadb: secretKey.secret, // getting the secret returned from the createKey function
+    tenant_faunadb_hash: secretKey.hashed_secret, // getting the hashed_secret returned from the createKey function
     tier: Attributes.tier
   };
   // save the data to the database
@@ -314,9 +321,17 @@ module.exports.saveTenantDataToFaunadb = async function(tenant) {
   return savedData;
 };
 
-// Get tenant_faunadb, tenant_faunadb_hash from FaunaDB User
+/**
+ * Save the tenant data to FaunaDB
+ * @param tenant Data for the tenant to be created
+ * @returns {Promise} The updated tenant
+ */
+/**
+ * 
+ */
 module.exports.updateTenantUserWithFaunaRecords = async function(tenant) {
   // const tenantDbData = await client.query(q.Match(q.Index(company_name + "TENANT")));
+  // Get tenant_faunadb, tenant_faunadb_hash from FaunaDB User
   const { email, tenant_faunadb, tenant_faunadb_hash } = tenant.data;
   var params = {
     UserAttributes: [
@@ -340,6 +355,12 @@ module.exports.updateTenantUserWithFaunaRecords = async function(tenant) {
   }
 };
 
+/**
+ * @param data Data that is returned from Cognito; has the Attributes 
+ * @param tenantId The tenantId that is passed from the request header
+ * @param companyName The company name that is passed via the request header
+ * @returns TenantId and the Tenant Compant Name
+ */
 module.exports.tenantUsers = async function(data, tenantId, companyName) {
   var tenantUsers = {};
   const { Attributes } = data;
@@ -353,6 +374,13 @@ module.exports.tenantUsers = async function(data, tenantId, companyName) {
   }
 };
 
+/**
+ * @param data Data that is returned from Cognito; has the Attributes 
+ * @param tenantId The tenantId that is passed from the request header
+ * @papram locationId The locationId that is passed from the request header
+ * @param companyName The company name that is passed via the request header
+ * @returns TenantId and the Tenant Compant Name
+ */
 module.exports.locationUsers = async function(
   data,
   tenantId,
@@ -366,15 +394,41 @@ module.exports.locationUsers = async function(
     Attributes.location_id === locationId &&
     Attributes.company_name === companyName
   ) {
-    tenantUsers.tenant_id = Attributes.tenant_id;
-    tenantUsers.company_name = Attributes.company_name;
+    locationUsers.tenant_id = Attributes.tenant_id;
+    locationUsers.company_name = Attributes.company_name;
     return locationUsers;
   }
 };
 
+/**
+ * 
+ */
 module.exports.checkId = function(data) {
   const { id } = data;
   if (typeof id !== "string") {
     return { message: '"Id" must be a string', code: 400 };
   } 
 }
+
+
+
+
+// // ID token contains the user fields defined in the Amazon Cognito user pool.
+// // JWT tokens include three sections: a header, payload, and signature.
+
+// module.exports = function(req, res, next) {
+//   //get the token from the header if present
+//   const token = req.headers["x-access-token"] || req.headers["authorization"];
+//   //if no token found, return response (without going to the next middelware)
+//   if (!token) return res.status(401).send("Access denied. No token provided.");
+
+//   try {
+//     //if can verify the token, set req.user and pass to next middleware
+//     const decoded = jwt.verify(token, config.get("myprivatekey"));
+//     req.user = decoded;
+//     next();
+//   } catch (ex) {
+//     //if invalid token
+//     res.status(400).send("Invalid token.");
+//   }
+// };

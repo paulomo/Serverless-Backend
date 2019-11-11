@@ -1,0 +1,84 @@
+service: web-auth-api
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-domain-manager
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
+
+custom:
+  # Our stage is based on what is passed in when running serverless
+  # commands. Or fallsback to what we have set in the provider section.
+  stage: ${opt:stage, self:provider.stage}
+  # Set the table name here so we can use it while testing locally
+  tableName: ${self:custom.stage}-brand
+  # Set the region here so we can use it in code
+  region: ${self:provider.region}
+  # Set the domain for the api service this will be (api.getclothme.com/user)
+  domains:
+    prod: getclothme.com
+    dev: getclothme.com
+    test: getclothme.com
+
+  customDomain:
+    domainName: ${self:custom.stage.${self:custom.domains}}
+    basePath: "auth"
+    stage: ${self:custom.stage}
+    createRoute53Record: true
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev-api
+  region: us-east-1
+
+  # These environment variables are made available to our functions
+  # under process.env.
+  environment:
+    APP_ENV: ${self:custom.stage}
+    AWS_REGION: ${self:custom.region}
+    SERVICE_NAME: ${self:service}
+    SERVICE_URL: ${self.custom.customDomain.domainName}
+    NODE_PATH: "./:/opt/node_modules"
+    COGNITO_USER_POOL: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    IDENTITY_POOL_ID: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    FAUNADB_SECRET: "fnADcYjorfACFL8MTompEY5VnQzLatjtkD9lHYjS"
+
+layers:
+  dynamodb:
+    path: lib
+    description: "additional node_module"
+
+functions:
+  # Defines an HTTP API endpoint that calls the main function in app.js
+  # - method: POST request
+  # - cors: enabled CORS (Cross-Origin Resource Sharing) for browser cross
+  #     domain api call
+  brand:
+    handler: app.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+    layers:
+      - { Ref: NodeModuleLayerLambdaLayer }
+
+# Create our resources with separate CloudFormation templates
+resources:
+  # API Gateway Errors
+  - ${file(resources/api-gateway-errors.yml)}
+  # S3
+  - ${file(resources/s3-bucket.yml)}
+  # Cognito
+  - ${file(resources/cognito-user-pool.yml)}
+  - ${file(resources/cognito-identity-pool.yml)}
