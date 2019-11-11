@@ -1,20 +1,11 @@
+// AWS Services
 const AWS = require("aws-sdk");
-const jwtDecode = require("jwt-decode");
+const S3 = new AWS.S3(require("./s3config.js")());
 
 // Setup FaunaDB
-var faunadb = require("faunadb"),
-  q = faunadb.query;
+var faunadb = require("faunadb"),q = faunadb.query;
 const FAUNADB_SECRET = process.env.FAUNADB_SECRET;
 var client = new faunadb.Client({ secret: FAUNADB_SECRET });
-
-// AWS Services
-const S3 = new AWS.S3(require("./s3config.js")());
-AWS.config.update({ region: "us-east-1" });
-
-const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
-var cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
-  apiVersion: "2016-04-18"
-});
 
 // ******************************* DYNAMODB *********************************
 

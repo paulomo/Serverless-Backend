@@ -14,11 +14,12 @@ const S3 = new AWS.S3(require("./s3config.js")());
 // configure express
 const app = express();
 app.use(bodyParser.json({ strict: false }));
+app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
 
 /**
  * Register a new tenant
  */
-app.post("/tenant/signup", async function(request, response) {
+app.post("/tenant/location/signup", async function(request, response) {
   var tenant = request.body;
   // Generate the tenant and location id
   tenant.id = tenant.companyName.toUpperCase() + "-" + uuidV4();
@@ -54,7 +55,7 @@ app.post("/tenant/signup", async function(request, response) {
 /**
  * Lookup user pool for any user
  */
-app.get("/tenat/user-lookup/:userId", async function(request, response) {
+app.get("/tenat/location/user-lookup/:userId", async function(request, response) {
   const userId = request.params.userId;
   
   // search params
@@ -76,7 +77,7 @@ app.get("/tenat/user-lookup/:userId", async function(request, response) {
 /**
  * Get user attributes from a tenant
  */
-app.get("/tenant/user-attribute/:userId", function(request, response) {
+app.get("/tenant/location/user-attribute/:userId", function(request, response) {
   const userId = request.params.userId;
 
   // search params
@@ -98,7 +99,7 @@ app.get("/tenant/user-attribute/:userId", function(request, response) {
 /**
  * Get a list of users from a tenant
  */
-app.get("/tenant/users", function(request, response) {
+app.get("/tenant/location/users", function(request, response) {
   const { TenantID, CompanyName } = authHelper.extractTokenData(request);
 
   // search params
@@ -147,7 +148,7 @@ app.get("/tenant/location/users", async function(request, response) {
 app.get("/tenant/locations", function(request, response) {});
 
 /**
- * Create a new location and locationAdmin
+ * Create new location and locationAdmin
  */
 app.post("/tenant/location", function(request, response) {});
 

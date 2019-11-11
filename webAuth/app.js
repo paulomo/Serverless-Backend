@@ -1,15 +1,12 @@
-const AWS = require("aws-sdk");
 const express = require("express");
 const serverless = require("serverless-http");
 const bodyParser = require("body-parser");
+const winston = require('winston');
 
 // Get authHelper 
 const authHelper = require("../auth-helper");
 
 const cognitoUserPoolID = process.env.COGNITO_USER_POOL;
-
-// AWS Services
-const S3 = new AWS.S3(require("./s3config.js")());
 
 // configure express
 const app = express();
@@ -76,7 +73,7 @@ app.get("/tenat/user-lookup/:userId", async function(request, response) {
 /**
  * Get user attributes from a tenant
  */
-app.get("/tenant/user-attribute/:userId", function(request, response) {
+app.get("/tenant/user-attribute/:userId", async function(request, response) {
   const userId = request.params.userId;
 
   // search params
@@ -98,7 +95,7 @@ app.get("/tenant/user-attribute/:userId", function(request, response) {
 /**
  * Get a list of users from a tenant
  */
-app.get("/tenant/users", function(request, response) {
+app.get("/tenant/users", async function(request, response) {
   const { TenantID, CompanyName } = authHelper.extractTokenData(request);
 
   // search params
@@ -128,7 +125,7 @@ app.get("/tenant/location/users", async function(request, response) {
   var searchParams = {
     AttributesToGet: ["company_name", "tenant_id", "location_id"],
     Filter: "",
-    UserPoolId: cognitoUserPoolID /* required */
+    UserPoolId: cognitoUserPoolID 
   };
 
   // search for and return tenat users
@@ -142,72 +139,15 @@ app.get("/tenant/location/users", async function(request, response) {
 });
 
 /**
- * Get list of locations using a tenantId and locationId
+ * Enable a Disable User
  */
-app.get("/tenant/locations", function(request, response) {});
+app.post("/tenant/enable-user", async function(request, response) {});
 
 /**
- * Create a new location and locationAdmin
+ * Disable a User
  */
-app.post("/tenant/location", function(request, response) {});
-
-/**
- * Enable a tenant user that is currently disabled
- */
-app.put("/tenant/user-enabled/:userid", function(request, response) {});
-
-/**
- * Disable a tenant user that is currently enabled
- */
-app.put("/tenant/user-disabled/:userid", function(request, response) {});
-
-/**
- * Update a user's attributes
- */
-app.put("/tenant/user-update/:userid", function(requset, response) {});
-
-/**
- * Delete a user tenant
- */
-app.delete("/tenant/user/:userid", function(requset, response) {});
-
-/**
- * Delete a location
- */
-app.delete("/tenant/location/:locationId", function(request, response) {});
+app.post("/tenant/disable-user", async function(request, response) {});
 
 module.exports.handler = serverless(app);
 
-// const AmazonCognitoIdentity = require("amazon-cognito-identity-js");
 
-// Configure Cognito
-// const CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
-// const CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
-//
-// const poolData = {
-//   UserPoolId: process.env["COGNITO_USER_POOL_ID"],
-//   ClientId: process.env["COGNITO_APP_CLIENT_ID"]
-// };
-// var userPool = new CognitoUserPool(poolData);
-
-/**
- * WARNING: THIS WILL REMOVE THE DYNAMODB TABLES FOR THIS QUICKSTART.
- * NOTE: In production, it is recommendended to have a backup of all Tables, and only manage these tables from corresponding micro-services.
- * Delete DynamoDB Tables required for the Infrastructure including the User, Tenant, Product, and Order Tables.
- */
-app.delete("/brands/tables", function(request, response) {});
-
-/**
- * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
- * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
- */
-app.delete("/brands/tenants/:tenantId", function(request, response) {});
-
-/**
- * WARNING: THIS WILL REMOVE ALL THE COGNITO USER POOLS, IDENTITY POOLS, ROLES, AND POLICIES CREATED BY THIS QUICKSTART.
- * Delete Infrastructure Created by Multi-tenant Identity Reference Architecture
- */
-app.delete("/brands/tenants/:tenantId/location/:locationId", function(
-  request,
-  response
-) {});
