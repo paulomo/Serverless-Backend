@@ -10,7 +10,6 @@ const uuidV4 = require('uuid/v4').default;
 const winston = require('winston');
 
 // AWS Services
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const S3 = new AWS.S3(require("./s3config.js")());
 
 // Configure middleware

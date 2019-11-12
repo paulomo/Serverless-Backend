@@ -21,12 +21,12 @@ app.use(bodyParser.json({ strict: false }));
 const BRAND_TABLE = process.env.BRAND_TABLE;
 
 // Get Brand endpoint
-app.get('/product/health', function (req, res) {
+app.get('/brand/health', function (req, res) {
 	res.status(200).send({service: 'Product Manager', isAlive: true});
 });
 
 // Create REST entry points
-app.get('/product/:id', function (req, res) {
+app.get('/brand/:id', function (req, res) {
 	winston.debug('Fetching product: ' + req.params.id);
 	// init params structure with request params
 	var params = {

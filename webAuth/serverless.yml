@@ -44,8 +44,10 @@ provider:
     SERVICE_NAME: ${self:service}
     SERVICE_URL: ${self.custom.customDomain.domainName}
     NODE_PATH: "./:/opt/node_modules"
-    COGNITO_USER_POOL: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
-    IDENTITY_POOL_ID: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    COGNITO_USER_POOL_WEB: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    IDENTITY_POOL_ID_WEB: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    COGNITO_USER_POOL_MOBILE: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
+    IDENTITY_POOL_ID_MOBILE: arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_000000000
     FAUNADB_SECRET: "fnADcYjorfACFL8MTompEY5VnQzLatjtkD9lHYjS"
 
 layers:

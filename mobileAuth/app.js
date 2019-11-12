@@ -16,6 +16,10 @@ AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoin
 const COGNITO_USER_POOL = process.env.COGNITO_USER_POOL;
 const CLIENT_APP_ID = process.env.CLIENT_APP_ID;
 
+
+const COGNITO_USER_POOL_MOBILE = process.env.COGNITO_USER_POOL_WEB;
+const CLIENT_APP_ID_MOBILE = process.env.CLIENT_APP_ID_MOBILE;
+
 const poolData = { 
     UserPoolId : COGNITO_USER_POOL,
     ClientId : CLIENT_APP_ID
