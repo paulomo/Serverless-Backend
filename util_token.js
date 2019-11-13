@@ -106,6 +106,14 @@ module.exports.getUserFullName = function(request) {
   return userFullName;
 };
 
+/**
+ * @param request from the http
+ * @returns a token string
+ */
+module.exports.getAccessToken = function(request) {
+  return getToken(request);
+}
+
 // ******************************* PRIVATE FUNCTIONS *********************************
 
 /**

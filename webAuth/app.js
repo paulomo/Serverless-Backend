@@ -85,7 +85,6 @@ app.post("/tenant/signout", async function(request, response) {
   }catch(error){
     response.status(400).send(error);
   }
-
 });
 
 /**
@@ -94,6 +93,12 @@ app.post("/tenant/signout", async function(request, response) {
 app.post("/tenant/forgotpassword", async function(request, response) {
   var tenant = request.body;
   winston.debug();
+  try {
+    const result = await webAuthHelper.forgotPassword(tenant);
+    response.status(200).send(result);
+  }catch(error){
+    response.status(400).send(error);
+  }
 
 });
 
@@ -103,6 +108,12 @@ app.post("/tenant/forgotpassword", async function(request, response) {
 app.post("/tenant/resetpassword", async function(request, response) {
   var tenant = request.body;
   winston.debug();
+  try {
+    const result = await webAuthHelper.resetPassword(tenant);
+    response.status(200).send(result);
+  }catch(error){
+    response.status(400).send(error);
+  }
 
 });
 
@@ -199,12 +210,30 @@ app.get("/tenant/location/users", async function(request, response) {
 /**
  * Enable a Disable User
  */
-app.post("/tenant/enable-user", async function(request, response) {});
+app.post("/tenant/enable-user", async function(request, response) {
+  const { tenant } = request.body;
+  winston.debug();
+  try {
+    const result = await webAuthHelper.enableUser(tenant);
+    response.status(200).send(result);
+  }catch(error){
+    response.status(400).send(error);
+  }
+});
 
 /**
  * Disable a User
  */
-app.post("/tenant/disable-user", async function(request, response) {});
+app.post("/tenant/disable-user", async function(request, response) {
+  const { tenant } = request.body;
+  winston.debug();
+  try {
+    const result = await webAuthHelper.disableUser(tenant);
+    response.status(200).send(result);
+  }catch(error){
+    response.status(400).send(error);
+  }
+});
 
 module.exports.handler = serverless(app);
 
